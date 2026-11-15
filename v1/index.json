@@ -31,6 +31,10 @@
       "contributes": {
         "themes": 4
       },
+      "workspaces": [
+        "personal",
+        "business"
+      ],
       "locales": [
         "de",
         "en",
@@ -84,6 +88,10 @@
         "categories": 4,
         "rules": 4
       },
+      "workspaces": [
+        "personal",
+        "business"
+      ],
       "locales": [
         "de",
         "en",
@@ -135,6 +143,10 @@
         "categories": 5,
         "rules": 5
       },
+      "workspaces": [
+        "personal",
+        "business"
+      ],
       "locales": [
         "de",
         "en",
