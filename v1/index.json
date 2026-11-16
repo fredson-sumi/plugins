@@ -1,6 +1,49 @@
 {
   "plugins": [
     {
+      "id": "fredson-sumi/securo-ibkr",
+      "repository": "https://github.com/fredson-sumi/securo-ibkr",
+      "release": "v0.1.0",
+      "commit": "fbe203c3753da95697d28aabb52e0d3b8d6000c7",
+      "manifest": "manifests/fredson-sumi--securo-ibkr--fbe203c3753da95697d28aabb52e0d3b8d6000c7.json",
+      "manifest_sha256": "3aa37018c564e037b447519a3dbab14e4d205d282ae85fb2442b27065cbc4f12",
+      "name": {
+        "en": "Interactive Brokers",
+        "pt-BR": "Interactive Brokers"
+      },
+      "description": {
+        "en": "Imports cash balances, cash activity, open positions and trades from Interactive Brokers through an Activity Flex Query.",
+        "pt-BR": "Importa saldos em caixa, movimentações, posições abertas e operações da Interactive Brokers por meio de uma Activity Flex Query."
+      },
+      "version": "0.1.0",
+      "license": "MIT",
+      "min_securo_version": "0.19.0",
+      "contributes": {
+        "integrations": 1
+      },
+      "workspaces": [
+        "personal",
+        "business"
+      ],
+      "locales": [
+        "en",
+        "pt-BR"
+      ],
+      "topics": [
+        "ibkr",
+        "interactive-brokers",
+        "securo"
+      ],
+      "stars": 0,
+      "stars_7d": 0,
+      "added_at": "2026-11-16T22:17:36Z",
+      "updated_at": "2026-11-16T21:15:54Z",
+      "readme": "readmes/fredson-sumi--securo-ibkr--fbe203c3753da95697d28aabb52e0d3b8d6000c7.md",
+      "readme_sha256": "d76efe72b3ae51e50650522843f166ee351be5b5fa0bc8d4db99e17264e9db2d",
+      "archive": "archives/fredson-sumi--securo-ibkr--fbe203c3753da95697d28aabb52e0d3b8d6000c7.tar.gz",
+      "archive_sha256": "7bcf0d6ae244ff8d4f37b4253ab223c3dd2dc377bd1ca1efc8398291093b2e40"
+    },
+    {
       "id": "securo-finance/plugin-neon-themes",
       "repository": "https://github.com/securo-finance/plugin-neon-themes",
       "release": "v1.0.0",
@@ -48,7 +91,7 @@
         "securo",
         "theme"
       ],
-      "stars": 0,
+      "stars": 1,
       "stars_7d": 0,
       "added_at": "2026-11-14T15:35:57Z",
       "updated_at": "2026-11-14T15:34:25Z",
