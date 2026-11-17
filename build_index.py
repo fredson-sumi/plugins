@@ -199,7 +199,7 @@ class Output:
                 # alone, and an icon that doesn't change keeps its address across releases.
                 digest = sha256(icon)
                 (self.v1 / "icons" / f"{digest}.{extension}").write_bytes(icon)
-                entry |= {"icon": f"icons/{digest}.{extension}", "icon_sha256": digest}
+                entry |= {"icon": f"icons/{digest}.{extension}"}  # the name is its checksum
         if "runtime" in manifest:
             # Securo installs code only from this copy, checked against this sha256.
             if archive is None:
@@ -332,16 +332,18 @@ def stars_gained(history: list[list], stars: int, today: datetime) -> int:
 
 
 def _github_icon(gh: GitHub, full: str, commit: str) -> bytes | None:
-    """The repository's icon at that commit, if it has one."""
+    """The repository's icon at that commit: the first of ICON_NAMES it has, as in a local folder."""
     for name in ICON_NAMES:
         try:
             return gh.get(f"https://raw.githubusercontent.com/{full}/{commit}/{name}", accept="*/*",
                           limit=MAX_ICON_BYTES)
         except urllib.error.HTTPError as exc:
-            if exc.code != 404:
-                print(f"! {full}: {name} left out ({exc})", file=sys.stderr)
-        except Invalid as exc:
+            if exc.code == 404:
+                continue
             print(f"! {full}: {name} left out ({exc})", file=sys.stderr)
+        except Invalid as exc:  # too large
+            print(f"! {full}: {name} left out ({exc})", file=sys.stderr)
+        return None
     return None
 
 

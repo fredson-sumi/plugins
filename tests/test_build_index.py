@@ -1,9 +1,12 @@
+import contextlib
 import hashlib
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+import urllib.error
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -93,7 +96,6 @@ class Icons(unittest.TestCase):
                 _, entry, v1 = self.build(self.plugin(icon, name))
                 digest = hashlib.sha256(icon).hexdigest()
                 self.assertEqual(entry["icon"], f"icons/{digest}.{extension}")  # named by its checksum
-                self.assertEqual(entry["icon_sha256"], digest)
                 self.assertEqual((v1 / entry["icon"]).read_bytes(), icon)
 
     def test_a_plugin_without_an_icon_is_listed_without_one(self):
@@ -123,6 +125,46 @@ class Icons(unittest.TestCase):
         folder = self.plugin(PNG)
         _, entry, v1 = self.build(folder)
         self.assertEqual((v1 / entry["manifest"]).read_bytes(), (EXAMPLE / "securo-plugin.json").read_bytes())
+
+
+class FakeGitHub:
+    """Answers `get` from a map of file name to bytes, or to the error fetching it raises."""
+
+    def __init__(self, files: dict) -> None:
+        self.files, self.asked = files, []
+
+    def get(self, url: str, *, accept: str = "", limit: int | None = None) -> bytes:
+        name = url.rsplit("/", 1)[-1]
+        self.asked.append(name)
+        found = self.files.get(name, 404)
+        if isinstance(found, int):
+            raise urllib.error.HTTPError(url, found, "error", None, None)  # type: ignore[arg-type]
+        if limit and len(found) > limit:
+            raise build_index.Invalid(f"{url} is larger than {limit} bytes")
+        return found
+
+
+class GitHubIcons(unittest.TestCase):
+    def icon(self, files: dict) -> tuple[bytes | None, list[str], str]:
+        gh, errors = FakeGitHub(files), io.StringIO()
+        with contextlib.redirect_stderr(errors):
+            found = build_index._github_icon(gh, "maria/casa", "1" * 40)  # type: ignore[arg-type]
+        return found, gh.asked, errors.getvalue()
+
+    def test_the_first_icon_the_repository_has_is_read_at_the_release_commit(self):
+        self.assertEqual(self.icon({"icon.png": PNG, "icon.webp": WEBP}), (PNG, ["icon.png"], ""))
+        self.assertEqual(self.icon({"icon.webp": WEBP}), (WEBP, ["icon.png", "icon.webp"], ""))
+
+    def test_a_repository_without_an_icon_has_none_and_no_warning(self):
+        self.assertEqual(self.icon({}), (None, ["icon.png", "icon.webp"], ""))
+
+    def test_an_icon_that_is_too_large_or_cant_be_read_is_left_out_as_in_a_local_folder(self):
+        for png, reason in ((PNG + b"\x00" * build_index.MAX_ICON_BYTES, "larger than"), (500, "500")):
+            with self.subTest(reason):
+                found, asked, errors = self.icon({"icon.png": png, "icon.webp": WEBP})
+                self.assertIsNone(found)
+                self.assertEqual(asked, ["icon.png"])  # the other name isn't a fallback
+                self.assertIn(reason, errors)
 
 
 class Manifest(unittest.TestCase):

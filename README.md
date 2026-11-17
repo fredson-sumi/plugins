@@ -102,7 +102,7 @@ When Securo runs in Docker, use `http://host.docker.internal:8787/v1/index.json`
 
 ## The index format
 
-`v1/index.json` lists every plugin with its pinned commit, the sha256 of the copied manifest, README, icon and, for plugins with code, source archive, and what the catalog shows (name, description, counts per kind, locales, stars, dates). Securo fetches the index only when someone opens the catalog, reads manifests, READMEs and icons only from the index's own host and refuses any copy whose sha256 doesn't match. No instance talks to GitHub, and nothing is counted: popularity is GitHub stars.
+`v1/index.json` lists every plugin with its pinned commit, the sha256 of the copied manifest, README and, for plugins with code, source archive, its icon's copy if it has one (named by the icon's own sha256), and what the catalog shows (name, description, counts per kind, locales, stars, dates). Securo fetches the index only when someone opens the catalog, reads manifests, READMEs and icons only from the index's own host and refuses any copy whose sha256 doesn't match. No instance talks to GitHub, and nothing is counted: popularity is GitHub stars.
 
 You can host a mirror or your own index anywhere that serves static files and point `PLUGINS_INDEX_URL` at it.
 
