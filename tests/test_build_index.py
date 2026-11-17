@@ -16,14 +16,18 @@ EXAMPLE = ROOT / "examples" / "streaming"
 CODE_EXAMPLE = ROOT / "examples" / "hello-sync"
 
 
+def build(*folders: Path) -> tuple[subprocess.CompletedProcess, Path]:
+    out = Path(tempfile.mkdtemp())
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "build_index.py"), "local", *map(str, folders), "--out", str(out)],
+        capture_output=True, text=True,
+    )
+    return result, out / "v1"
+
+
 class LocalIndex(unittest.TestCase):
     def build(self, *folders: Path) -> tuple[subprocess.CompletedProcess, Path]:
-        out = Path(tempfile.mkdtemp())
-        result = subprocess.run(
-            [sys.executable, str(ROOT / "build_index.py"), "local", *map(str, folders), "--out", str(out)],
-            capture_output=True, text=True,
-        )
-        return result, out / "v1"
+        return build(*folders)
 
     def test_copies_are_named_by_their_checksum(self):
         result, v1 = self.build(EXAMPLE)
@@ -63,6 +67,62 @@ class LocalIndex(unittest.TestCase):
         _, v1 = self.build(EXAMPLE)
         [entry] = json.loads((v1 / "index.json").read_text())["plugins"]
         self.assertNotIn("archive", entry)
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+WEBP = b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 24
+
+
+class Icons(unittest.TestCase):
+    def plugin(self, icon: bytes | None, name: str = "icon.png") -> Path:
+        folder = Path(tempfile.mkdtemp())
+        (folder / "securo-plugin.json").write_bytes((EXAMPLE / "securo-plugin.json").read_bytes())
+        if icon is not None:
+            (folder / name).write_bytes(icon)
+        return folder
+
+    def build(self, folder: Path) -> tuple[subprocess.CompletedProcess, dict, Path]:
+        result, v1 = build(folder)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        [entry] = json.loads((v1 / "index.json").read_text())["plugins"]
+        return result, entry, v1
+
+    def test_the_icon_at_the_root_is_copied_under_its_checksum(self):
+        for icon, name, extension in ((PNG, "icon.png", "png"), (WEBP, "icon.webp", "webp")):
+            with self.subTest(name):
+                _, entry, v1 = self.build(self.plugin(icon, name))
+                digest = hashlib.sha256(icon).hexdigest()
+                self.assertEqual(entry["icon"], f"icons/{digest}.{extension}")  # named by its checksum
+                self.assertEqual(entry["icon_sha256"], digest)
+                self.assertEqual((v1 / entry["icon"]).read_bytes(), icon)
+
+    def test_a_plugin_without_an_icon_is_listed_without_one(self):
+        result, entry, _ = self.build(self.plugin(None))
+        self.assertNotIn("icon", entry)
+        self.assertEqual(result.stderr, "")
+        _, entry, _ = self.build(self.plugin(PNG, "logo.png"))  # only icon.png or icon.webp, at the root
+        self.assertNotIn("icon", entry)
+
+    def test_an_icon_that_breaks_a_rule_is_left_out_and_the_plugin_still_listed(self):
+        for icon, reason in ((b"<svg/>", "not a PNG or WebP"), (b"GIF89a" + b"\x00" * 32, "not a PNG or WebP"),
+                             (PNG + b"\x00" * build_index.MAX_ICON_BYTES, "larger than 64 KB")):
+            with self.subTest(reason):
+                result, entry, _ = self.build(self.plugin(icon))
+                self.assertNotIn("icon", entry)
+                self.assertIn(reason, result.stderr)
+
+    def test_an_icon_that_is_a_link_is_left_out(self):
+        outside = Path(tempfile.mkdtemp()) / "icon.png"
+        outside.write_bytes(PNG)
+        folder = self.plugin(None)
+        (folder / "icon.png").symlink_to(outside)
+        _, entry, _ = self.build(folder)
+        self.assertNotIn("icon", entry)
+
+    def test_the_manifest_is_left_as_it_is(self):
+        folder = self.plugin(PNG)
+        _, entry, v1 = self.build(folder)
+        self.assertEqual((v1 / entry["manifest"]).read_bytes(), (EXAMPLE / "securo-plugin.json").read_bytes())
 
 
 class Manifest(unittest.TestCase):
